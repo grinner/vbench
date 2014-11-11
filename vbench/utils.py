@@ -39,6 +39,11 @@ from vbench.benchmark import Benchmark
 import logging
 log = logging.getLogger('vb')
 
+is_py2 = True if int(sys.version[0]) < 3 else False
+if not is_py2:
+    xrange = range
+    basestring = str
+
 def multires_order(n):
     """Provide order of indexes slowly detailing into the history
 
@@ -102,11 +107,11 @@ def run_cmd(cmd, stderr_levels=('warn', 'error'), **kwargs):
             stderr=subprocess.PIPE,
             **kwargs)
     stdout, stderr = proc.communicate()
-    if stdout: log.debug("stdout: " + stdout)
+    if stdout: log.debug("stdout: " + str(stdout))
     if stderr:
         stderr_level = stderr_levels[int(proc.returncode>0)]
         if stderr_level:
-            getattr(log, stderr_level)("stderr: " + stderr)
+            getattr(log, stderr_level)("stderr: " + str(stderr))
     return proc
 
 # TODO: join two together

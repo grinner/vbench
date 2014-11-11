@@ -49,6 +49,8 @@ class GitRepo(Repo):
         authors = []
         for line in githist.split('\n'):
             # skip commits not in mainline
+            if line == '':
+                continue
             if not line[0] == '*':
                 continue
             # split line into three real parts, ignoring git-graph in front

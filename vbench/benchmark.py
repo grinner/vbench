@@ -1,6 +1,13 @@
 # pylint: disable=W0122
 
-from cStringIO import StringIO
+import sys
+is_py2 = True if int(sys.version[0]) < 3 else False
+
+if is_py2:
+    from cStringIO import StringIO
+else:
+    from io import BytesIO as StringIO
+    xrange = range
 
 import cProfile
 try:
@@ -18,6 +25,7 @@ import traceback
 import inspect
 
 # from pandas.util.testing import set_trace
+
 
 
 class Benchmark(object):
@@ -49,15 +57,16 @@ class Benchmark(object):
 
     def _setup(self):
         ns = globals().copy()
-        exec self.setup in ns
+        exec(self.setup, ns)
         return ns
 
     def _cleanup(self, ns):
-        exec self.cleanup in ns
+        exec(self.cleanup, ns)
 
     @property
     def checksum(self):
-        return hashlib.md5(self.setup + self.code + self.cleanup).hexdigest()
+        hasher = self.setup + self.code + self.cleanup
+        return hashlib.md5(hasher.encode('utf-8')).hexdigest()
 
     def profile(self, ncalls):
         prof = cProfile.Profile()
@@ -67,7 +76,7 @@ class Benchmark(object):
 
         def f(*args, **kw):
             for i in xrange(ncalls):
-                exec code in ns
+                exec(code, ns)
         prof.runcall(f)
 
         self._cleanup(ns)
@@ -109,7 +118,7 @@ class Benchmark(object):
 
         start = time.clock()
         for _ in xrange(ncalls):
-            exec code in ns
+            exec(code, ns)
 
         elapsed = time.clock() - start
         if disable_gc:
@@ -355,13 +364,18 @@ def magic_timeit(ns, stmt, ncalls=None, repeat=3, force_ms=False):
     # but is there a better way to achieve that the code stmt has access
     # to the shell namespace?
 
-    src = timeit.template % {'stmt': timeit.reindent(stmt, 8),
-                             'setup': "pass"}
+    if is_py2:
+        src = timeit.template % {'stmt': timeit.reindent(stmt, 8),
+                                 'setup': "pass"}
+    else:
+        src = timeit.template.format(stmt=timeit.reindent(stmt, 8), 
+                                        setup='pass')
+
     # Track compilation time so it can be reported if too long
     # Minimum time above which compilation time will be reported
     code = compile(src, "<magic-timeit>", "exec")
 
-    exec code in ns
+    exec(code, ns)
     timer.inner = ns["inner"]
 
     if ncalls is None:
